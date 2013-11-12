@@ -16,7 +16,7 @@
       (is (= (:interval r) (interval (from-string from) (from-string to)))))))
 
 (deftest test-reserve
-  (reset! schedules {})
+  (dosync (alter schedules (constantly {})))
   (let [from "2014-01-01"
         to   "2014-12-31"
         r    (reservation :a from to)
@@ -34,27 +34,25 @@
         r         (reservation :a from to)
         other-r   (reservation :a from other-to)]
     (testing "scheduled? is false if this identical reservation is not in schedules."
-      (is (do (reset! schedules {})
-              (not (scheduled? r)))))
+      (is (dosync (alter schedules (constantly {}))
+                  (not (scheduled? r)))))
     (testing "scheduled? is true if this identical reservation is in schedules."
-      (is (do (reset! schedules {})
-              (reserve r)
-              (scheduled? r))))
+      (is (dosync (alter schedules (constantly {}))
+                  (reserve r)
+                  (scheduled? r))))
     (testing "scheduled? is false if a similar but different reservation is in schedules."
-      (is (not (do (reset! schedules {})
-                   (reserve r)
-                   (scheduled? other-r)))))))
+      (is (not (dosync (alter schedules (constantly {}))
+                       (reserve r)
+                       (scheduled? other-r)))))))
 
 (deftest test-available?
   (testing "available? is true when a reservation could be made."
-    (do
-      (reset! schedules {})
-      (reserve (reservation :a "2014-01-01" "2014-12-31"))
-      (is (available? (reservation :a "2013-01-01" "2013-12-31")))
-      (is (available? (reservation :a "2015-01-01" "2015-12-31")))))
+    (dosync (alter schedules (constantly {}))
+            (reserve (reservation :a "2014-01-01" "2014-12-31"))
+            (is (available? (reservation :a "2013-01-01" "2013-12-31")))
+            (is (available? (reservation :a "2015-01-01" "2015-12-31")))))
   (testing "available? is false when a reservation would overlap another reservation."
-    (do
-      (reset! schedules {})
+    (dosync (alter schedules (constantly {}))
       (reserve (reservation :a "2014-01-01" "2014-12-31"))
       (is (not (available? (reservation :a "2014-01-01" "2014-12-31"))))
       (is (not (available? (reservation :a "2014-01-01" "2014-01-03"))))
@@ -65,11 +63,11 @@
   (testing "release removes a reservation from schedules."
     (let [r     (reservation :a "2014-01-01" "2014-12-31")
           other (reservation :a "2015-01-01" "2015-12-31")]
-      (reset! schedules {})
-      (reserve r)
-      (is (scheduled? r))
-      (reserve other)
-      (is (scheduled? other))
-      (release r)
-      (is (not (scheduled? r)))
-      (is (scheduled? other)))))
+      (dosync  (alter schedules (constantly {}))
+               (reserve r)
+               (is (scheduled? r))
+               (reserve other)
+               (is (scheduled? other))
+               (release r)
+               (is (not (scheduled? r)))
+               (is (scheduled? other))))))

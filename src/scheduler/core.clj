@@ -6,7 +6,7 @@
   (import org.joda.time.Interval)
   (:gen-class))
 
-(def ^{:doc "Hash of schedules, indexed by resource.  A schedule is a vector of Interval."} schedules (atom {}))
+(def ^{:doc "Hash of schedules, indexed by resource.  A schedule is a vector of Interval."} schedules (ref {}))
 
 (defn reservation
   ([resource ^String from ^String to]
@@ -27,13 +27,14 @@
 (defn reserve
   "Add reservation r to schedules."
   [{:keys [resource interval] :as r}]
-  (when (available? r)
-    (swap! schedules assoc resource (conj (@schedules resource) interval))))
+  (dosync
+   (when (available? r)
+     (alter schedules assoc resource (conj (@schedules resource) interval)))))
 
 (defn release
   "Release the reservation."
   [{:keys [resource interval] :as r}]
   {:pre  [(scheduled? r)]
    :post [(not (scheduled? r))]}
-  (swap! schedules assoc resource (remove #(= interval %) (@schedules resource))))
+  (dosync (alter schedules assoc resource (remove #(= interval %) (@schedules resource)))))
 
