@@ -13,7 +13,11 @@
     (testing "Resource is properly assigned."
       (is (= (:resource r) :a)))
     (testing "Interval is properly created."
-      (is (= (:interval r) (interval (from-string from) (from-string to)))))))
+      (is (= (:interval r) (interval (from-string from) (from-string to)))))
+    (testing "Additional options (key/value pairs) are part of the reservation."
+      (is (let [r (reservation :a from to :foo :bar)]
+            (= (keys r) [:resource :interval :foo])
+            (= (:foo r) :bar))))))
 
 (deftest test-reserve
   (dosync (alter schedules (constantly {})))
@@ -23,9 +27,10 @@
         _    (reserve r)]
     (testing "Reserve adds the resource as a key in schedules."
       (is (= #{:a} (into #{} (keys @schedules)))))
-    (testing "The interval is stored under the resource's schedules."
-      (is (= (:a @schedules)
-             [(:interval r)])))))
+    (testing "A map of the resource and interval is stored in the resource's schedules."
+      (is (let [{:keys [resource interval]} (first (:a @schedules))]
+            (and (= resource (:resource r))
+                 (= interval (:interval r))))))))
 
 (deftest test-scheduled?
   (let [from      "2014-01-01"
